@@ -61,15 +61,15 @@ ISLhparams = {
 def invariant_statistical_loss(model, data_loader, hparams):
     optimizer = optim.Adam(model.parameters(), lr=hparams['eta'])
     losses = []
-    for _ in tqdm(range(hparams['epochs'])):
-        for data in data_loader:
+    for data in tqdm(data_loader):
+        a_k = torch.zeros(int(hparams['K']) + 1)
+        for y in data:
             optimizer.zero_grad()
-            noise = torch.normal(0.0, 1.0, size=(hparams['samples'], 1))
-            y_k = model(noise)
-            a_k = generate_a_k(y_k, data)
-            loss_value = scalar_diff(a_k / torch.sum(a_k))
-            loss = torch.tensor(loss_value, requires_grad=True)
-            loss.backward()
-            optimizer.step()
-            losses.append(loss.item())
+            x_k = torch.normal(0.0, 1.0, size=(hparams['K'], 1))
+            y_k = model(x_k)
+            a_k += generate_a_k(y_k, y)
+        loss = scalar_diff(a_k / torch.sum(a_k))
+        loss.backward()
+        optimizer.step()
+        losses.append(loss.item())
     return losses

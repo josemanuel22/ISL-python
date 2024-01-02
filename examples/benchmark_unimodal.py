@@ -69,7 +69,8 @@ hparams = {
     'samples': 1000,
     'epochs': 100,
     'eta': 1e-2,
-    'transform': noise_model
+    'transform': noise_model,
+    'K': 10
 }
 
 def sample_from_target_model(target_model, num_samples):
@@ -101,7 +102,7 @@ import torch
 
 # Assuming 'model' is your trained model and 'noise' is the input for the model
 # Generating data
-noise = torch.normal(0.0, 1.0, size=(hparams['samples'], 1))
+noise = torch.normal(0.0, 1.0, size=(10000, 1))
 gen.eval()  # Set the gen to evaluation mode
 with torch.no_grad():  # Turn off gradients for evaluation
     generated_data = gen(noise).detach().cpu().numpy()  # Convert to NumPy array
