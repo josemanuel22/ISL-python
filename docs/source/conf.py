@@ -9,9 +9,9 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('../../'))
 
-project = 'Mi Módulo'
-copyright = '2023, Tu Nombre'
-author = 'Tu Nombre'
+project = 'ISL-python'
+copyright = '2024, José Manuel'
+author = 'José Manuel'
 release = '1.0'
 
 # -- General configuration ---------------------------------------------------

@@ -1,7 +1,7 @@
-mimodulo
+ISL
 ========
 
 .. toctree::
    :maxdepth: 4
 
-   mimodulo
+   ISL

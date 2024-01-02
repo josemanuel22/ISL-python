@@ -1,13 +1,13 @@
-mimodulo package
+ISL package
 ================
 
 Submodules
 ----------
 
-mimodulo.matematicas module
+ISL.isl module
 ---------------------------
 
-.. automodule:: mimodulo.matematicas
+.. automodule:: ISL.isl
    :members:
    :undoc-members:
    :show-inheritance:
@@ -15,7 +15,7 @@ mimodulo.matematicas module
 Module contents
 ---------------
 
-.. automodule:: mimodulo
+.. automodule:: ISL
    :members:
    :undoc-members:
    :show-inheritance:
