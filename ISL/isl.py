@@ -2,6 +2,7 @@ import numpy as np
 from tqdm import tqdm
 import scipy.stats as stats
 from scipy.special import expit
+import torch.nn.functional as F
 
 def _sigmoid(y_hat, y):
     """Calculate the sigmoid function centered at y using PyTorch."""
@@ -33,10 +34,22 @@ def scalar_diff(q):
 
 def jensen_shannon_divergence(p, q):
     """Calculate the Jensen-Shannon divergence using PyTorch."""
-    epsilon = 1e-3  # to avoid log(0)
-    p_safe, q_safe = p + epsilon, q + epsilon
+    epsilon = 1e-10  # Small constant to avoid log(0)
+    p_safe = p + epsilon
+    q_safe = q + epsilon
+
+    # Ensure the distributions are normalized
+    p_safe /= p_safe.sum()
+    q_safe /= q_safe.sum()
+
     m = 0.5 * (p_safe + q_safe)
-    return 0.5 * (F.kl_div(m.log(), p_safe, reduction='batchmean') + F.kl_div(m.log(), q_safe, reduction='batchmean'))
+
+    # Calculate the KL divergences and ensure to take the log of p_safe and q_safe
+    kl_div_p = F.kl_div(m.log(), p_safe, reduction='batchmean')
+    kl_div_q = F.kl_div(m.log(), q_safe, reduction='batchmean')
+
+    # Jensen-Shannon divergence is the average of these KL divergences
+    return 0.5 * (kl_div_p + kl_div_q)
 
 def jensen_shannon_grad(q):
     """Jensen-Shannon difference between q tensor and uniform distribution tensor using PyTorch."""
