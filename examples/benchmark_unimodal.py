@@ -67,7 +67,7 @@ hparams_vanilla_gan = {
 hparams = {
     'max_k': 10,
     'samples': 1000,
-    'epochs': 100,
+    'epochs': 1000,
     'eta': 1e-2,
     'transform': noise_model,
     'K': 10
