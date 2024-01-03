@@ -1,7 +1,7 @@
 import sys
 sys.path.append('../ISL-python')
 
-from ISL.isl import invariant_statistical_loss
+from ISL.isl import invariant_statistical_loss, auto_invariant_statistical_loss
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -96,6 +96,17 @@ loader = DataLoader(train_data, batch_size=hparams['samples'], shuffle=True)
 # Train the model
 # Assuming 'gen' is your model and 'auto_invariant_statistical_loss' is defined as per your previous messages
 losses = invariant_statistical_loss(gen, loader, hparams)
+
+hparams = {
+    'max_k': 10,
+    'samples': 1000,
+    'epochs': 1000,
+    'eta': 1e-2,
+    'transform': noise_model,
+    'K': 10
+}
+
+losses = auto_invariant_statistical_loss(gen, loader, hparams)
 
 import matplotlib.pyplot as plt
 import torch

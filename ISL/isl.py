@@ -5,6 +5,7 @@ from scipy.stats import chisquare
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import numpy as np
 
 def _sigmoid(y_hat, y):
     """Calculate the sigmoid function centered at y using PyTorch."""
@@ -88,20 +89,30 @@ def invariant_statistical_loss(model, data_loader, hparams):
 
 
 
-def get_window_of_Ak(transform, model, data, K):
+def get_window_of_Ak(model, data, K):
     """
     Generate a window of the rv's Ak for a given model and target function.
     """
-    window = [torch.sum(model(transform(K)).T < d) for d in data]
-    return [torch.sum(window == i).item() for i in range(K + 1)]
+    x_k = torch.normal(0.0, 1.0, size=(K, 1))
+    window = [torch.sum(model(x_k).T < d) for d in data]
+    return [torch.sum(torch.tensor(window) == i).item() for i in range(K + 1)]
 
 def convergence_to_uniform(ak):
     """
     Test the convergence of the distribution of the window of the rv's Ak to a uniform
     distribution. It is implemented using a Chi-Square test.
     """
-    expected = torch.full((len(ak),), 1 / len(ak))
-    return chisquare(ak, expected.numpy())[1] > 0.05
+    # Convert to numpy array and ensure non-negative values
+    ak_np = torch.tensor(ak).numpy()
+    ak_np = ak_np.clip(min=0)
+
+    # Adjust expected frequencies to ensure the total sum matches
+    total = ak_np.sum()
+    expected_np = (total / len(ak_np)) * np.ones(len(ak_np))
+
+    # Perform the chi-square test
+    _, p_value = chisquare(ak_np, expected_np)
+    return p_value > 0.05
 
 def get_better_K(nn_model, data, min_K, hparams):
     """
@@ -109,36 +120,34 @@ def get_better_K(nn_model, data, min_K, hparams):
     """
     K = hparams['max_k']
     for k in range(min_K, hparams['max_k'] + 1):
-        if not convergence_to_uniform(get_window_of_Ak(hparams['transform'], nn_model, data, k)):
+        if not convergence_to_uniform(get_window_of_Ak(nn_model, data, k)):
             K = k
             break
     return K
 
-def auto_invariant_statistical_loss(nn_model, data, hparams):
-    assert len(data) == hparams['samples']
+def auto_invariant_statistical_loss(nn_model, data_loader, hparams):
+    assert len(data_loader) == hparams['samples']
 
     K = 2
     print(f"K value set to {K}.")
     losses = []
     optimizer = optim.Adam(nn_model.parameters(), lr=hparams['eta'])
 
-    for _ in tqdm(range(hparams['epochs'])):
+    for data in tqdm(data_loader):
         K_hat = get_better_K(nn_model, data, K, hparams)
         if K < K_hat:
             K = K_hat
             print(f"K value set to {K}.")
-
         def closure():
             optimizer.zero_grad()
             a_k = torch.zeros(K + 1)
-            for i in range(hparams['samples']):
+            for y in data:
                 x = torch.normal(0.0, 1.0, size=(K, 1))
                 y_k = nn_model(x)
-                a_k += generate_a_k(y_k, data[i])  # Assuming generate_a_k is defined
+                a_k += generate_a_k(y_k, y)  # Assuming generate_a_k is defined
             loss = scalar_diff(a_k / a_k.sum())  # Assuming scalar_diff is defined
             loss.backward()
             return loss
-
         loss = optimizer.step(closure)
         losses.append(loss.item())
 

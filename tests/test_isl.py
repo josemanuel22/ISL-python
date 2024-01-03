@@ -77,5 +77,37 @@ class TestFunctions(unittest.TestCase):
         expected = torch.sum((q - 1/(K+1)) ** 2)
         self.assertTrue(torch.isclose(ISL.isl.scalar_diff(q), expected))
 
+    # Mock model for testing
+    def mock_model(self, x):
+        # This mock model can be adjusted to return predictable values
+        return x * 2
+
+    def test_get_window_of_Ak(self):
+        mock_data = [torch.tensor([2.0]), torch.tensor([4.0])]
+        K = 2
+        result = ISL.isl.get_window_of_Ak(self.mock_model, mock_data, K)
+        # Expected result based on the mock_model and mock_data
+        expected = [2, 1, 0]
+        self.assertEqual(result, expected)
+
+    def test_convergence_to_uniform(self):
+        uniform_distribution = [25, 25, 25, 25]  # Uniform
+        non_uniform_distribution = [5, 5, 20, 70]  # Non-uniform
+        approx_uniform_distribution = [20, 30, 20, 30]  # approx-uniform
+        limit_uniform_distribution_negative = [15, 35, 20, 30]  # limit-uniform-
+        limit_uniform_distribution_positive = [17, 33, 20, 30]  # limit-uniform+
+        self.assertTrue(ISL.isl.convergence_to_uniform(uniform_distribution))
+        self.assertFalse(ISL.isl.convergence_to_uniform(non_uniform_distribution))
+        self.assertTrue(ISL.isl.convergence_to_uniform(approx_uniform_distribution))
+        self.assertFalse(ISL.isl.convergence_to_uniform(limit_uniform_distribution_negative))
+        self.assertFalse(ISL.isl.convergence_to_uniform(limit_uniform_distribution_positive))
+
+    def test_get_better_K(self):
+        mock_data = [torch.tensor([100.0]), torch.tensor([100.0]), torch.tensor([100.0])]
+        hparams = {'max_k': 100}
+        expected_K = 2  # Expected K value for these inputs
+        result_K = ISL.isl.get_better_K(self.mock_model, mock_data, 2, hparams)
+        self.assertEqual(result_K, expected_K)
+
 if __name__ == "__main__":
     unittest.main()
