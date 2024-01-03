@@ -40,7 +40,7 @@ class TestFunctions(unittest.TestCase):
         self.assertTrue(torch.all(torch.eq(ISL.isl.gamma(y_k, y_n, m), expected)))
 
     def test_gamma_approx(self):
-        y_k = torch.tensor([[1.0, 2.0, 3.1, 3.9]], dtype=torch.float32)
+        y_k = torch.tensor([1.0, 2.0, 3.1, 3.9], dtype=torch.float32)
         y_n = torch.tensor(3.6, dtype=torch.float32)
         m = 3
         expected = torch.tensor([0.0, 0.0, 0.0, 0.92038, 0.0], dtype=torch.float32)
@@ -57,7 +57,7 @@ class TestFunctions(unittest.TestCase):
         self.assertTrue(torch.all(torch.eq(ISL.isl.generate_a_k(y_hat, y), expected)))
 
     def test_generate_a_k_approx(self):
-        y_hat = torch.tensor([[1.0, 2.0, 3.1, 3.9]], dtype=torch.float32)
+        y_hat = torch.tensor([1.0, 2.0, 3.1, 3.9], dtype=torch.float32)
         y = torch.tensor(3.6, dtype=torch.float32)
         expected = torch.tensor([0.0, 0.0, 0.0, 0.92038, 0.0], dtype=torch.float32)
         tol = 1e-5  # Assuming 'tol' is defined somewhere in your tests
