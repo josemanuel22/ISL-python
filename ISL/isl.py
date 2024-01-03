@@ -1,8 +1,12 @@
 import numpy as np
 from tqdm import tqdm
 import scipy.stats as stats
-from scipy.special import expit
 import torch.nn.functional as F
+from scipy.stats import chisquare
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
 
 def _sigmoid(y_hat, y):
     """Calculate the sigmoid function centered at y using PyTorch."""
@@ -57,10 +61,7 @@ def jensen_shannon_grad(q):
     uniform_dist = torch.full((K,), fill_value=1/K)
     return jensen_shannon_divergence(q, uniform_dist)
 
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import numpy as np
+
 
 # Hyperparameters
 ISLhparams = {
@@ -85,4 +86,62 @@ def invariant_statistical_loss(model, data_loader, hparams):
         loss.backward()
         optimizer.step()
         losses.append(loss.item())
+    return losses
+
+
+
+def get_window_of_Ak(transform, model, data, K):
+    """
+    Generate a window of the rv's Ak for a given model and target function.
+    """
+    window = [torch.sum(model(transform(K)).T < d) for d in data]
+    return [torch.sum(window == i).item() for i in range(K + 1)]
+
+def convergence_to_uniform(ak):
+    """
+    Test the convergence of the distribution of the window of the rv's Ak to a uniform
+    distribution. It is implemented using a Chi-Square test.
+    """
+    expected = torch.full((len(ak),), 1 / len(ak))
+    return chisquare(ak, expected.numpy())[1] > 0.05
+
+def get_better_K(nn_model, data, min_K, hparams):
+    """
+    Find a better K value based on the convergence to uniform distribution.
+    """
+    K = hparams['max_k']
+    for k in range(min_K, hparams['max_k'] + 1):
+        if not convergence_to_uniform(get_window_of_Ak(hparams['transform'], nn_model, data, k)):
+            K = k
+            break
+    return K
+
+def auto_invariant_statistical_loss(nn_model, data, hparams):
+    assert len(data) == hparams['samples']
+
+    K = 2
+    print(f"K value set to {K}.")
+    losses = []
+    optimizer = Adam(nn_model.parameters(), lr=hparams['eta'])
+
+    for epoch in tqdm(range(hparams['epochs'])):
+        K_hat = get_better_K(nn_model, data, K, hparams)
+        if K < K_hat:
+            K = K_hat
+            print(f"K value set to {K}.")
+
+        def closure():
+            optimizer.zero_grad()
+            a_k = torch.zeros(K + 1)
+            for i in range(hparams['samples']):
+                x = torch.normal(0.0, 1.0, size=(K, 1))
+                y_k = nn_model(x)
+                a_k += generate_a_k(y_k, data[i])  # Assuming generate_a_k is defined
+            loss = scalar_diff(a_k / a_k.sum())  # Assuming scalar_diff is defined
+            loss.backward()
+            return loss
+
+        loss = optimizer.step(closure)
+        losses.append(loss.item())
+
     return losses
