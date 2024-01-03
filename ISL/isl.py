@@ -1,4 +1,3 @@
-import numpy as np
 from tqdm import tqdm
 import scipy.stats as stats
 import torch.nn.functional as F
@@ -6,7 +5,6 @@ from scipy.stats import chisquare
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
 
 def _sigmoid(y_hat, y):
     """Calculate the sigmoid function centered at y using PyTorch."""
