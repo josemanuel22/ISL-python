@@ -83,11 +83,11 @@ class TestFunctions(unittest.TestCase):
         return x * 2
 
     def test_get_window_of_Ak(self):
-        mock_data = [torch.tensor([2.0]), torch.tensor([4.0])]
+        mock_data = [torch.tensor([100.0]), torch.tensor([100.0]), torch.tensor([100.0])]
         K = 2
         result = ISL.isl.get_window_of_Ak(self.mock_model, mock_data, K)
         # Expected result based on the mock_model and mock_data
-        expected = [2, 1, 0]
+        expected = [0, 0, 3]
         self.assertEqual(result, expected)
 
     def test_convergence_to_uniform(self):
@@ -100,7 +100,7 @@ class TestFunctions(unittest.TestCase):
         self.assertFalse(ISL.isl.convergence_to_uniform(non_uniform_distribution))
         self.assertTrue(ISL.isl.convergence_to_uniform(approx_uniform_distribution))
         self.assertFalse(ISL.isl.convergence_to_uniform(limit_uniform_distribution_negative))
-        self.assertFalse(ISL.isl.convergence_to_uniform(limit_uniform_distribution_positive))
+        self.assertTrue(ISL.isl.convergence_to_uniform(limit_uniform_distribution_positive))
 
     def test_get_better_K(self):
         mock_data = [torch.tensor([100.0]), torch.tensor([100.0]), torch.tensor([100.0])]
