@@ -122,9 +122,9 @@ def auto_invariant_statistical_loss(nn_model, data, hparams):
     K = 2
     print(f"K value set to {K}.")
     losses = []
-    optimizer = Adam(nn_model.parameters(), lr=hparams['eta'])
+    optimizer = optim.Adam(nn_model.parameters(), lr=hparams['eta'])
 
-    for epoch in tqdm(range(hparams['epochs'])):
+    for _ in tqdm(range(hparams['epochs'])):
         K_hat = get_better_K(nn_model, data, K, hparams)
         if K < K_hat:
             K = K_hat
