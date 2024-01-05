@@ -152,3 +152,25 @@ def auto_invariant_statistical_loss(nn_model, data_loader, hparams):
         losses.append(loss.item())
 
     return losses
+
+def ts_invariant_statistical_loss(rec, gen, X_t, X_t1, hparams):
+    losses = []
+    optim_rec = optim.Adam(rec.parameters(), lr=hparams['eta'])
+    optim_gen = optim.Adam(gen.parameters(), lr=hparams['eta'])
+    for (batch_X_t, batch_X_t1) in zip(X_t, X_t1):
+        rec.zero_grad()
+        for j in range(0, len(batch_X_t) - hparams['window_size'], hparams['window_size']):
+            def closure():
+                a_k = torch.zeros(hparams['K'] + 1)
+                s = rec(batch_X_t[j:j + hparams['window_size']].T)
+                for i in range(hparams['window_size']):
+                    x_k = torch.normal(0.0, 1.0, size=(hparams['K'], 1))
+                    y_k = torch.cat([gen(torch.cat((x, s[:, i]))) for x in x_k])
+                    a_k += generate_a_k(y_k, batch_X_t1[j + i])
+                loss = scalar_diff(a_k / a_k.sum())
+                loss.backward()
+                return loss
+            optim_rec.step(closure)
+            optim_gen.step(closure)
+            losses.append(closure().item())
+    return losses

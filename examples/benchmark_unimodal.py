@@ -1,5 +1,6 @@
 import sys
-sys.path.append('../ISL-python')
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  # Add parent directory to path
 
 from ISL.isl import invariant_statistical_loss, auto_invariant_statistical_loss
 import torch
@@ -44,8 +45,23 @@ class Discriminator(nn.Module):
         return self.model(x)
 
 # Hyperparameters and models setup
-noise_model = Normal(0.0, 1.0)
-target_model = [Normal(5.0, 2.0), Pareto(5.0, 1.0)]  # Custom mixture model required
+noise_model = Normal(0.0, 1.0)  # Custom noise model required
+target_model = Normal(5.0, 2.0)  # Custom target model required
+gen = Generator()
+dscr = Discriminator()
+# Hyperparameters for Vanilla GAN (may need to adjust)
+hparams_vanilla_gan = {
+    'data_size': 100,
+    'batch_size': 1,
+    'epochs': 10000,
+    'lr_dscr': 1e-4,
+    'lr_gen': 1e-4,
+    'dscr_steps': 4,
+    'gen_steps': 0,
+    'noise_model': noise_model,
+    'target_model': target_model
+}
+target_model = Normal(5.0, 2.0)  # Custom mixture model required
 gen = Generator()
 dscr = Discriminator()
 # Hyperparameters for Vanilla GAN (may need to adjust)
