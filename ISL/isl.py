@@ -12,7 +12,9 @@ from functorch.experimental.control_flow import map
 
 def _sigmoid(y_hat, y):
     """Calculate the sigmoid function centered at y using PyTorch."""
+    # return torch.relu((y - y_hat))
     return torch.sigmoid((y - y_hat) * 10.0)
+    # return torch.nn.functional.softplus((y - y_hat))
 
 
 def psi_m(y, m):
@@ -73,8 +75,7 @@ def generate_a_k_batch(y_hat, y):
 
 def scalar_diff(q):
     """Scalar difference between the vector representing our surrogate histogram and the uniform distribution vector using PyTorch."""
-    K = len(q)
-    return torch.sum((q - 1/(K+1)) ** 2)
+    return torch.sum((q - 1/len(q)) ** 2)
 
 
 def jensen_shannon_divergence(p, q):
@@ -189,7 +190,7 @@ def auto_invariant_statistical_loss(nn_model, data_loader, hparams):
             optimizer.zero_grad()
             a_k = torch.zeros(K + 1)
             distribution = torch.distributions.Normal(0, 1)
-            for y in data:
+            for y in tqdm(data):
                 x = distribution.rsample((K, 1)).float()
                 y_k = nn_model(x)
                 a_k += generate_a_k(y_k, y)  # Assuming generate_a_k is defined
@@ -300,7 +301,6 @@ class CondTimeGenModel(nn.Module):
         batch_size = x.size(0)
         distribution = torch.distributions.Normal(0, 1)
         noise = distribution.rsample((K, batch_size, 1)).float()
-        print(noise.grad)
         # noise = torch.randn((K, batch_size, 1), requires_grad=True).float()
         s_repeated = self.state.repeat(K, 1)
 
@@ -319,7 +319,8 @@ def generated_fictitious(model, x, K):
     noise.requires_grad_(True)
     # noise = torch.randn((K, batch_size, 1), requires_grad=True).float()
 
-    s_repeated = state.repeat(K, 1)
+    # s_repeated = state.repeat(K, 1)
+    s_repeated = state.repeat_interleave(K, dim=0)
 
     # noise_reshaped = noise.view(-1, batch_size * K, 1)
     noise_reshaped = noise.flatten(start_dim=0, end_dim=1)
@@ -356,6 +357,8 @@ def ts_invariant_statistical_loss(model, X_t, X_t_plus_1, hparams):
                 return loss
 
             loss = closure()
+            for name, param in model.named_parameters():
+                print(f"Gradient for {name}: {param.grad}")
             optimizer.step(closure)  # Update model parameters
             losses.append(loss.item())
 
@@ -368,27 +371,22 @@ def ts_invariant_statistical_loss_2(model, X_t, X_t_plus_1, hparams):
     model.train()  # Set the model to training mode
 
     for batch_X_t, batch_X_t_plus_1 in tqdm(zip(X_t, X_t_plus_1)):
-        for j in range(0, len(batch_X_t) - hparams['window_size'], hparams['window_size']):
-            optimizer.zero_grad()  # Reset gradients
-            input_tensor = batch_X_t[j: j + hparams['window_size']
-                                     ].unsqueeze(1).unsqueeze(-1).float()
-            y_k = generated_fictitious(model, input_tensor, hparams['K'])
+        optimizer.zero_grad()  # Reset gradients
+        input_tensor = batch_X_t.unsqueeze(1).unsqueeze(-1).float()
+        y_k = generated_fictitious(model, input_tensor, hparams['K'])
 
-            a_k_value = [
-                generate_a_k(y_k[:, i:i + hparams['K']], batch_X_t_plus_1[i])
-                for i in range(0, hparams['window_size'], hparams['K'])
-            ]
-            a_k_values = torch.stack(a_k_value, dim=1)
+        a_k_value = [
+            generate_a_k(y_k[i*hparams['K']:(i+1) *
+                             hparams['K'], :], batch_X_t_plus_1[i])
+            for i in range(0, hparams['window_size'])
+        ]
+        a_k = torch.stack(a_k_value, dim=1)
 
-            a_k = sum(a_k_values)
-            loss = scalar_diff(a_k / a_k.sum())
-            loss.backward()
-
-            # Debugging: Print gradients
-            for name, param in model.named_parameters():
-                print(f"Gradient for {name}: {param.grad}")
-
-            optimizer.step()  # Update model parameters
-            losses.append(loss.item())
+        a_k = torch.sum(a_k, dim=1)
+        norm = torch.norm(a_k, p=2)
+        loss = scalar_diff(a_k / norm)
+        loss.backward()
+        optimizer.step()  # Update model parameters
+        losses.append(loss.item())
 
     return losses
