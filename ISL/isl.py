@@ -75,7 +75,11 @@ def generate_a_k_batch(y_hat, y):
 
 def scalar_diff(q):
     """Scalar difference between the vector representing our surrogate histogram and the uniform distribution vector using PyTorch."""
-    return torch.sum((q - 1/len(q)) ** 2)
+    # return torch.sum((q - 1/len(q)) ** 2)
+    uniform_value = 1 / \
+        q.size(0)  # Compute the uniform distribution value once
+    # return torch.sum((q - uniform_value) ** 2)
+    return torch.norm(q - uniform_value, p=2)
 
 
 def jensen_shannon_divergence(p, q):
@@ -370,20 +374,20 @@ def ts_invariant_statistical_loss_2(model, X_t, X_t_plus_1, hparams):
     optimizer = optim.Adam(model.parameters(), lr=hparams['eta'])
     model.train()  # Set the model to training mode
 
-    for batch_X_t, batch_X_t_plus_1 in tqdm(zip(X_t, X_t_plus_1)):
-        optimizer.zero_grad()  # Reset gradients
-        input_tensor = batch_X_t.unsqueeze(1).unsqueeze(-1).float()
-        y_k = generated_fictitious(model, input_tensor, hparams['K'])
+    K = hparams['K']
+    window_size = hparams['window_size']
 
-        a_k_value = [
-            generate_a_k(y_k[i*hparams['K']:(i+1) *
-                             hparams['K'], :], batch_X_t_plus_1[i])
-            for i in range(0, hparams['window_size'])
-        ]
-        a_k = torch.stack(a_k_value, dim=1)
+    for batch_X_t, batch_X_t_plus_1 in tqdm(zip(X_t, X_t_plus_1), total=len(X_t)):
+        optimizer.zero_grad(set_to_none=True)  # Reset gradients
+        input_tensor = batch_X_t.unsqueeze(2).float()
+        y_k = generated_fictitious(model, input_tensor, K)
 
-        a_k = torch.sum(a_k, dim=1)
-        norm = torch.norm(a_k, p=2)
+        a_k_values = torch.stack([
+            generate_a_k(y_k[i*K:(i+1) * K, :], batch_X_t_plus_1[i]) for i in range(window_size)
+        ], dim=1)
+        a_k = torch.sum(a_k_values, dim=1)
+
+        norm = torch.norm(a_k, p=2, dim=-1, keepdim=True)
         loss = scalar_diff(a_k / norm)
         loss.backward()
         optimizer.step()  # Update model parameters
